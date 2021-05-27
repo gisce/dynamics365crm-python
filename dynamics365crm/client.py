@@ -6,9 +6,10 @@ class Client:
     api_base_url = "api/data/v9.0"
     header = {
         "Accept": "application/json, */*",
-        "content-type": "application/json; charset=utf-8",
+        "Content-Type": "application/json; charset=utf-8",
         "OData-MaxVersion": "4.0",
         "OData-Version": "4.0",
+        "Prefer": "return=representation",
     }
 
     def __init__(self, resource, client_id=None, client_secret=None, token=None):
@@ -97,7 +98,7 @@ class Client:
         :param response:
         :return:
         """
-        if response.status_code == 204 or response.status_code == 201:
+        if response.status_code == 204:
             return True
         elif response.status_code == 400:
             raise Exception(
