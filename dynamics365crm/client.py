@@ -1,5 +1,19 @@
+# Default imports
 import requests
-import json
+
+# Custom imports
+from .errors import (
+    BadRequestError,
+    UnauthorizedError,
+    ForbiddenError,
+    NotFoundError,
+    PreconditionFailedError,
+    PayloadTooLargeError,
+    TooManyRequestsError,
+    InternalServerError,
+    NotImplementedError,
+    ServiceUnavailableError,
+)
 
 
 class Client:
@@ -30,7 +44,7 @@ class Client:
         top=None,
         data=None,
         json=None,
-        **kwargs
+        **kwargs,
     ):
         """
         this method do the request petition, receive the different methods (post, delete, patch, get) that the api allow, see the documentation to check how to use the filters
@@ -98,61 +112,74 @@ class Client:
         :param response:
         :return:
         """
-        if response.status_code == 204:
+        response_url = response.url
+        status_code = response.status_code
+        raw_message = response.text
+
+        if status_code == 204:
             return True
-        elif response.status_code == 400:
-            raise Exception(
-                "The URL {0} retrieved an {1} error. Please check your request body and try again.\nRaw message: {2}".format(
-                    response.url, response.status_code, response.text
-                )
+        elif status_code == 400:
+            raise BadRequestError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check your request body and try again",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 401:
-            raise Exception(
-                "The URL {0} retrieved and {1} error. Please check your credentials, make sure you have permission to perform this action and try again.".format(
-                    response.url, response.status_code
-                )
+        elif status_code == 401:
+            raise UnauthorizedError(
+                f"The URL {response_url} retrieved and {status_code} error. Please check your credentials, make sure you have permission to perform this action and try again.",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 403:
-            raise Exception(
-                "The URL {0} retrieved and {1} error. Please check your credentials, make sure you have permission to perform this action and try again.".format(
-                    response.url, response.status_code
-                )
+        elif status_code == 403:
+            raise ForbiddenError(
+                f"The URL {response_url} retrieved and {status_code} error. Please check your credentials, make sure you have permission to perform this action and try again.",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 404:
-            raise Exception(
-                "The URL {0} retrieved an {1} error. Please check the URL and try again.\nRaw message: {2}".format(
-                    response.url, response.status_code, response.text
-                )
+        elif status_code == 404:
+            raise NotFoundError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 412:
-            raise Exception(
-                "The URL {0} retrieved an {1} error. Please check the URL and try again.\nRaw message: {2}".format(
-                    response.url, response.status_code, response.text
-                )
+        elif status_code == 412:
+            raise PreconditionFailedError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 413:
-            raise Exception(
-                "The URL {0} retrieved an {1} error. Please check the URL and try again.\nRaw message: {2}".format(
-                    response.url, response.status_code, response.text
-                )
+        elif status_code == 413:
+            raise PayloadTooLargeError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 500:
-            raise Exception(
-                "The URL {0} retrieved an {1} error. Please check the URL and try again.\nRaw message: {2}".format(
-                    response.url, response.status_code, response.text
-                )
+
+        elif status_code == 429:
+            raise TooManyRequestsError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 501:
-            raise Exception(
-                "The URL {0} retrieved an {1} error. Please check the URL and try again.\nRaw message: {2}".format(
-                    response.url, response.status_code, response.text
-                )
+        elif status_code == 500:
+            raise InternalServerError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                raw_message,
+                response_url,
             )
-        elif response.status_code == 503:
-            raise Exception(
-                "The URL {0} retrieved an {1} error. Please check the URL and try again.\nRaw message: {2}".format(
-                    response.url, response.status_code, response.text
-                )
+
+        elif status_code == 501:
+            raise NotImplementedError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                raw_message,
+                response_url,
+            )
+
+        elif status_code == 503:
+            raise ServiceUnavailableError(
+                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                raw_message,
+                response_url,
             )
         return response.json()
 
@@ -376,7 +403,62 @@ class Client:
             return self._patch(url, json=params)
         raise Exception("To update a campaign is necessary the ID")
 
+    def retrieve_campaign(self, id, **kwargs):
+        if id != "":
+            url = "campaigns({0})".format(id)
+            return self._get(url, **kwargs)
+        raise Exception("To retrieve a campaign ID is necessary")
+
     def delete_campaign(self, id):
         if id != "":
             return self._delete("campaigns({0})".format(id))
         raise Exception("To delete a campaign is necessary the ID")
+
+    # lists section, see the documentation https://docs.microsoft.com/es-es/dynamics365/customer-engagement/web-api/list?view=dynamics-ce-odata-9
+    def get_lists(self, **kwargs):
+        return self._get("lists", **kwargs)
+
+    def create_list(self, list_data, **kwargs):
+        if not list:
+            return self._post("lists", json=list_data, **kwargs)
+
+    def update_list(self, id, list_data, **kwargs):
+        if id != "":
+            url = "lists({0})".format(id)
+            params = {}
+            if not list_data:
+                params = list_data
+            return self._patch(url, json=params, **kwargs)
+        raise Exception("To update a list is necessary the ID")
+
+    def delete_list(self, id):
+        if id != "":
+            return self._delete("lists({0})".format(id))
+        raise Exception("To delete a list is necessary the ID")
+
+    def add_list_members_list(self, json, **kwargs):
+        if not json:
+            raise Exception("`json` data being sent can't be empty!")
+        return self._post("AddListMembersList", json=json, **kwargs)
+
+    def add_campaign_to_list(self, id, campaign_id, **kwargs):
+        if id and campaign_id:
+            json_data = {
+                "Campaign": {
+                    "campaignid": campaign_id,
+                    "@odata.type": "Microsoft.Dynamics.CRM.campaign",
+                }
+            }
+            return self._post(
+                f"lists({id})/Microsoft.Dynamics.CRM.AddItemCampaign",
+                json=json_data,
+                **kwargs,
+            )
+        raise Exception("Missing params `id` and `campaignid`")
+
+    # upsert section
+    def upsert_data(self, key_data, member_type=None, json={}, **kwargs):
+        if key_data and type:
+            url = f"{member_type}({key_data})"
+            return self._patch(url, json=json, **kwargs)
+        raise Exception("The fields `type` and `key_data` are necessary!")
