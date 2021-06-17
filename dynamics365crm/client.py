@@ -1,5 +1,6 @@
 # Default imports
 import requests
+import logging
 
 # Custom imports
 from .errors import (
@@ -88,9 +89,18 @@ class Client:
                     )
                 else:
                     response = requests.request(
-                        method, url, headers=self.header, data=data, json=json
+                        method,
+                        url,
+                        headers={
+                            **self.header,
+                            "Content-Type": kwargs.get(
+                                "content_type", "application/json; charset=utf-8"
+                            ),
+                        },
+                        data=data,
+                        json=json,
                     )
-                return self.parse_response(response)
+                return response if "$batch" in url else self.parse_response(response)
             else:
                 raise Exception("To make petitions the token is necessary")
 
@@ -257,36 +267,58 @@ class Client:
     def get_data(self, type=None, **kwargs):
         if type is not None:
             return self._get(type, **kwargs)
-        raise Exception(
-            "A type is necessary. Example: contacts, leads, accounts, etc... check the library"
-        )
+        raise Exception("Missing param `type` when retrieving data.")
 
-    def create_data(self, type=None, **kwargs):
-        if type is not None and kwargs is not None:
-            params = {}
-            params.update(kwargs)
-            return self._post(type, json=params)
-        raise Exception(
-            "A type is necessary. Example: contacts, leads, accounts, etc... check the library"
-        )
+    def create_data(self, type, data, **kwargs):
+        if type is not None and data is not None:
+            return self._post(type, json=data, **kwargs)
+        raise Exception("Missing params `type` or `data` when creating data.")
 
-    def update_data(self, type=None, id=None, **kwargs):
-        if type is not None and id is not None:
+    def update_data(self, type=None, id=None, data=None, **kwargs):
+        if type is not None and id is not None and data is not None:
             url = "{0}({1})".format(type, id)
-            params = {}
-            if kwargs is not None:
-                params.update(kwargs)
-            return self._patch(url, json=params)
-        raise Exception(
-            "A type is necessary. Example: contacts, leads, accounts, etc... check the library"
-        )
+            return self._patch(url, json=data, **kwargs)
+        raise Exception("Missing params `type`, `id` or `data` when updating data.")
 
     def delete_data(self, type=None, id=None):
         if type is not None and id is not None:
             return self._delete("{0}({1})".format(type, id))
-        raise Exception(
-            "A type is necessary. Example: contacts, leads, accounts, etc... check the library"
-        )
+        raise Exception("Missing param `type` or `id` when deleting data")
+
+    def get_or_create_data(self, data_type, data, filter=None, **kwargs):
+        """
+        Parameters:
+        ----------
+        data_type           :   str
+                                The type of the data being created.
+                                Ex: campaign, list, etc
+        data                :   dict
+                                Data dictionary of the data which is being created
+        filter              :   str
+                                The filter string which can be used to filter the data
+                                Ex: `listname eq 'demo_list'` is searching for a marketing list with name 'demo_list'
+
+
+        Example Input:
+        -------------
+        data_type         =   "campaign"
+        data                =   {
+                                    "name": "Demo campaign 1",
+                                    ...
+                                    // Other fields. Please refer the link below
+                                    https://docs.microsoft.com/en-us/dynamics365/customer-engagement/web-api/campaign?view=dynamics-ce-odata-9
+                                    ...
+                                }
+        filter              =   "name eq 'Demo campaign 1'"
+        """
+
+        try:
+            obj_data = self.get_data(data_type, filter=filter, **kwargs).get("value")[0]
+            return obj_data, False
+        except IndexError:
+            logging.info(f"Required data not found. Creating new data for {data_type}")
+            obj_data = self.create_data(data_type, data, **kwargs)
+            return obj_data, True
 
     # contact section, see the documentation https://docs.microsoft.com/es-es/dynamics365/customer-engagement/web-api/contact?view=dynamics-ce-odata-9
     def get_contacts(self, **kwargs):
@@ -377,69 +409,67 @@ class Client:
             if kwargs is not None:
                 params.update(kwargs)
             return self._patch(url, json=params)
-        raise Exception("To update a lead is necessary the ID")
+        raise NotFoundError("Missing param `id` when updating a lead")
 
     def delete_lead(self, id):
         if id != "":
             return self._delete("leads({0})".format(id))
-        raise Exception("To delete a lead is necessary the ID")
+        raise NotFoundError("Missing param `id` when deleting a lead")
 
     # campaign section, see the documentation https://docs.microsoft.com/es-es/dynamics365/customer-engagement/web-api/campaign?view=dynamics-ce-odata-9
     def get_campaigns(self, **kwargs):
         return self._get("campaigns", **kwargs)
 
-    def create_campaign(self, **kwargs):
-        if kwargs is not None:
-            params = {}
-            params.update(kwargs)
-            return self._post("campaigns", json=params)
+    def create_campaign(self, campaign, **kwargs):
+        if campaign:
+            return self._post("campaigns", json=campaign, **kwargs)
+        raise NotFoundError("Missing param `campaign`(dict) when creating a campaign")
 
-    def update_campaign(self, id, **kwargs):
-        if id != "":
-            url = "campaigns({0})".format(id)
-            params = {}
-            if kwargs is not None:
-                params.update(kwargs)
-            return self._patch(url, json=params)
-        raise Exception("To update a campaign is necessary the ID")
+    def update_campaign(self, id, campaign, **kwargs):
+        if id != "" and campaign is not None:
+            url = f"campaigns({id})"
+            return self._patch(url, json=campaign, **kwargs)
+        raise NotFoundError(
+            "Missing params `id` or `campaign`(dict) when creating a campaign"
+        )
 
     def retrieve_campaign(self, id, **kwargs):
         if id != "":
-            url = "campaigns({0})".format(id)
+            url = f"campaigns({id})"
             return self._get(url, **kwargs)
-        raise Exception("To retrieve a campaign ID is necessary")
+        raise NotFoundError("Missing param `id` when retrieving a campaign")
 
     def delete_campaign(self, id):
         if id != "":
             return self._delete("campaigns({0})".format(id))
-        raise Exception("To delete a campaign is necessary the ID")
+        raise NotFoundError("Missing param `id` when deleting a campaign")
 
     # lists section, see the documentation https://docs.microsoft.com/es-es/dynamics365/customer-engagement/web-api/list?view=dynamics-ce-odata-9
     def get_lists(self, **kwargs):
         return self._get("lists", **kwargs)
 
     def create_list(self, list_data, **kwargs):
-        if not list:
+        if list_data:
             return self._post("lists", json=list_data, **kwargs)
+        raise NotFoundError("Missing param `list_data`(dict) when creating a list")
 
-    def update_list(self, id, list_data, **kwargs):
+    def update_list(self, id, list_data={}, **kwargs):
         if id != "":
             url = "lists({0})".format(id)
-            params = {}
-            if not list_data:
-                params = list_data
-            return self._patch(url, json=params, **kwargs)
-        raise Exception("To update a list is necessary the ID")
+            return self._patch(url, json=list_data, **kwargs)
+        raise NotFoundError("Missing param `id` when updating a list")
 
     def delete_list(self, id):
         if id != "":
             return self._delete("lists({0})".format(id))
-        raise Exception("To delete a list is necessary the ID")
+        raise NotFoundError("Missing param `id` when deleting a list")
 
     def add_list_members_list(self, json, **kwargs):
-        if not json:
-            raise Exception("`json` data being sent can't be empty!")
-        return self._post("AddListMembersList", json=json, **kwargs)
+        if json:
+            return self._post("AddListMembersList", json=json, **kwargs)
+        raise NotFoundError(
+            "Missing param `json` when adding a list of members to a marketing list"
+        )
 
     def add_campaign_to_list(self, id, campaign_id, **kwargs):
         if id and campaign_id:
@@ -454,11 +484,21 @@ class Client:
                 json=json_data,
                 **kwargs,
             )
-        raise Exception("Missing params `id` and `campaignid`")
+        raise NotFoundError(
+            "Missing params `id` or `campaignid` when adding a campaign to a marketing list"
+        )
 
     # upsert section
-    def upsert_data(self, key_data, member_type=None, json={}, **kwargs):
-        if key_data and type:
+    def upsert_data(self, key_data, member_type, json={}, **kwargs):
+        if key_data and member_type:
             url = f"{member_type}({key_data})"
             return self._patch(url, json=json, **kwargs)
-        raise Exception("The fields `type` and `key_data` are necessary!")
+        raise NotFoundError(
+            "Missing params `member_type` or `key_data` when upserting the data"
+        )
+
+    # batch section
+    def batch_data(self, payload, **kwargs):
+        if payload:
+            return self._post("$batch", data=payload, **kwargs)
+        return NotFoundError("Missing params `payload` when calling this API")
