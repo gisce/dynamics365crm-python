@@ -264,7 +264,7 @@ class Client:
             self.token = token
 
     # TODO: four main methods (CRUD)
-    def get_data(self, type=None, **kwargs):
+    def get_data(self, type, **kwargs):
         if type is not None:
             return self._get(type, **kwargs)
         raise Exception("Missing param `type` when retrieving data.")
@@ -274,16 +274,16 @@ class Client:
             return self._post(type, json=data, **kwargs)
         raise Exception("Missing params `type` or `data` when creating data.")
 
-    def update_data(self, type=None, id=None, data=None, **kwargs):
+    def update_data(self, type, id, data, **kwargs):
         if type is not None and id is not None and data is not None:
             url = "{0}({1})".format(type, id)
             return self._patch(url, json=data, **kwargs)
         raise Exception("Missing params `type`, `id` or `data` when updating data.")
 
-    def delete_data(self, type=None, id=None):
+    def delete_data(self, type, id):
         if type is not None and id is not None:
             return self._delete("{0}({1})".format(type, id))
-        raise Exception("Missing param `type` or `id` when deleting data")
+        raise Exception("Missing param `type` or `id` when deleting data.")
 
     def get_or_create_data(self, data_type, data, filter=None, **kwargs):
         """
