@@ -433,6 +433,12 @@ class Client:
             "Missing params `id` or `campaign`(dict) when creating a campaign"
         )
 
+    def retrieve_data(self, object_type, object_id, **kwargs):
+        if object_id is not None and object_type is not None:
+            url = f"{object_type}({object_id})"
+            return self._get(url, **kwargs)
+        raise NotFoundError("Missing param `object_type` or `object_id` when retrieving data")
+
     def retrieve_campaign(self, id, **kwargs):
         if id != "":
             url = f"campaigns({id})"
