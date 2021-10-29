@@ -87,6 +87,20 @@ class Client:
                     response = requests.request(
                         method, url, headers=self.header, params=kwargs
                     )
+                elif method == "patch":
+                    response = requests.request(
+                        method,
+                        url,
+                        headers={
+                            **self.header,
+                            "If-Match": "*",
+                            "Content-Type": kwargs.get(
+                                "content_type", "application/json; charset=utf-8"
+                            ),
+                        },
+                        data=data,
+                        json=json,
+                    )
                 else:
                     response = requests.request(
                         method,
