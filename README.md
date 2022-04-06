@@ -1,4 +1,4 @@
-# dynamics365crm-python
+# dynamics365crm-python27
 Dynamics365CRM API wrapper for Dynamics 365 written in Python.
 This library works for API version: v9.0
 
