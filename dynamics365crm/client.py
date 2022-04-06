@@ -45,7 +45,7 @@ class Client:
         top=None,
         data=None,
         json=None,
-        **kwargs,
+        **kwargs
     ):
         """
         this method do the request petition, receive the different methods (post, delete, patch, get) that the api allow, see the documentation to check how to use the filters
@@ -88,31 +88,33 @@ class Client:
                         method, url, headers=self.header, params=kwargs
                     )
                 elif method == "patch":
+                    patch_headers = self.header.copy()
+                    patch_headers.update({
+                        "If-Match": "*",
+                        "Content-Type": kwargs.get(
+                            "content_type", "application/json; charset=utf-8"
+                        )
+                    })
                     response = requests.request(
                         method,
                         url,
-                        headers={
-                            **self.header,
-                            "If-Match": "*",
-                            "Content-Type": kwargs.get(
-                                "content_type", "application/json; charset=utf-8"
-                            ),
-                        },
+                        headers=patch_headers,
                         data=data,
-                        json=json,
+                        json=json
                     )
                 else:
+                    post_headers = self.header.copy()
+                    post_headers.update({
+                        "Content-Type": kwargs.get(
+                            "content_type", "application/json; charset=utf-8"
+                        )
+                    })
                     response = requests.request(
                         method,
                         url,
-                        headers={
-                            **self.header,
-                            "Content-Type": kwargs.get(
-                                "content_type", "application/json; charset=utf-8"
-                            ),
-                        },
+                        headers=post_headers,
                         data=data,
-                        json=json,
+                        json=json
                     )
                 return response if "$batch" in url else self.parse_response(response)
             else:
@@ -144,64 +146,64 @@ class Client:
             return True
         elif status_code == 400:
             raise BadRequestError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check your request body and try again",
+                "The URL {response_url} retrieved an {status_code} error. Please check your request body and try again".format(**locals()),
                 raw_message,
                 response_url,
             )
         elif status_code == 401:
             raise UnauthorizedError(
-                f"The URL {response_url} retrieved and {status_code} error. Please check your credentials, make sure you have permission to perform this action and try again.",
+                "The URL {response_url} retrieved and {status_code} error. Please check your credentials, make sure you have permission to perform this action and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
         elif status_code == 403:
             raise ForbiddenError(
-                f"The URL {response_url} retrieved and {status_code} error. Please check your credentials, make sure you have permission to perform this action and try again.",
+                "The URL {response_url} retrieved and {status_code} error. Please check your credentials, make sure you have permission to perform this action and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
         elif status_code == 404:
             raise NotFoundError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                "The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
         elif status_code == 412:
             raise PreconditionFailedError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                "The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
         elif status_code == 413:
             raise PayloadTooLargeError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                "The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
 
         elif status_code == 429:
             raise TooManyRequestsError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                "The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
         elif status_code == 500:
             raise InternalServerError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                "The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
 
         elif status_code == 501:
             raise NotImplementedError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                "The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
 
         elif status_code == 503:
             raise ServiceUnavailableError(
-                f"The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.",
+                "The URL {response_url} retrieved an {status_code} error. Please check the URL and try again.".format(**locals()),
                 raw_message,
                 response_url,
             )
@@ -330,7 +332,7 @@ class Client:
             obj_data = self.get_data(data_type, filter=filter, **kwargs).get("value")[0]
             return obj_data, False
         except IndexError:
-            logging.info(f"Required data not found. Creating new data for {data_type}")
+            logging.info("Required data not found. Creating new data for {data_type}".format(**locals()))
             obj_data = self.create_data(data_type, data, **kwargs)
             return obj_data, True
 
@@ -441,7 +443,7 @@ class Client:
 
     def update_campaign(self, id, campaign, **kwargs):
         if id != "" and campaign is not None:
-            url = f"campaigns({id})"
+            url = "campaigns({id})".format(**locals())
             return self._patch(url, json=campaign, **kwargs)
         raise NotFoundError(
             "Missing params `id` or `campaign`(dict) when creating a campaign"
@@ -449,13 +451,13 @@ class Client:
 
     def retrieve_data(self, object_type, object_id, **kwargs):
         if object_id is not None and object_type is not None:
-            url = f"{object_type}({object_id})"
+            url = "{object_type}({object_id})".format(**locals())
             return self._get(url, **kwargs)
         raise NotFoundError("Missing param `object_type` or `object_id` when retrieving data")
 
     def retrieve_campaign(self, id, **kwargs):
         if id != "":
-            url = f"campaigns({id})"
+            url = "campaigns({id})".format(**locals())
             return self._get(url, **kwargs)
         raise NotFoundError("Missing param `id` when retrieving a campaign")
 
@@ -500,9 +502,9 @@ class Client:
                 }
             }
             return self._post(
-                f"lists({id})/Microsoft.Dynamics.CRM.AddItemCampaign",
+                "lists({id})/Microsoft.Dynamics.CRM.AddItemCampaign".format(**locals()),
                 json=json_data,
-                **kwargs,
+                **kwargs
             )
         raise NotFoundError(
             "Missing params `id` or `campaignid` when adding a campaign to a marketing list"
@@ -511,7 +513,7 @@ class Client:
     # upsert section
     def upsert_data(self, key_data, member_type, json={}, **kwargs):
         if key_data and member_type:
-            url = f"{member_type}({key_data})"
+            url = "{member_type}({key_data})".format(**locals())
             return self._patch(url, json=json, **kwargs)
         raise NotFoundError(
             "Missing params `member_type` or `key_data` when upserting the data"
